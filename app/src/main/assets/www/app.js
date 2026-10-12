@@ -378,13 +378,8 @@ async function sprawdzAktualizacje(reczne) {
   const wynik = t => { $('aktWynik').textContent = t; };
   if (!natywne) { if (reczne) wynik('Aktualizacje działają tylko w aplikacji na Androidzie.'); return; }
   if (reczne) wynik('Sprawdzanie…');
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 8000);
   try {
-    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`,
-                          { signal: ac.signal, headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
-    if (!r.ok) throw new Error(`GitHub ${r.status}`);
-    const j = await r.json();
+    const j = JSON.parse(await zInternetu(`https://api.github.com/repos/${REPO}/releases/latest`));
     const kod = parseInt(String(j.tag_name).split('.').pop(), 10);
     const apk = (j.assets || []).find(a => a.name.endsWith('.apk'));
     cfg.aktSprawdzono = Date.now(); zapiszCfg();
@@ -397,9 +392,34 @@ async function sprawdzAktualizacje(reczne) {
     $('aktWynik').appendChild(b);
     if (!reczne) toast(`Dostępna nowa wersja aplikacji ${j.tag_name} (Ustawienia)`);
   } catch (e) {
-    // w sieci kamery nie ma internetu - to normalne, cicho przy sprawdzaniu automatycznym
-    if (reczne) wynik('Nie udało się sprawdzić: brak internetu? W sieci kamery go nie ma. Połącz telefon z internetem i spróbuj ponownie.');
-  } finally { clearTimeout(t); }
+    // brak internetu (np. dane komorkowe wylaczone) - cicho przy sprawdzaniu automatycznym
+    if (reczne) wynik(`Nie udało się sprawdzić (${e.message}). Aplikacja pyta GitHuba przez dane komórkowe, ` +
+                      'bo Wi-Fi kamery nie ma internetu — sprawdź, czy dane komórkowe są włączone.');
+  }
+}
+
+// Internet przez natywna powloke: proces jest przypiety do Wi-Fi kamery, wiec zwykly fetch nie wyjdzie do sieci.
+// Starsza powloka (bez pobierzZInternetu) -> zwykly fetch.
+const oczekujace = {};
+let nrZapytania = 0;
+window.wynikInternetu = (id, ok, tekst) => {
+  const p = oczekujace[id]; delete oczekujace[id];
+  if (p) (ok ? p.ok(tekst) : p.zle(new Error(tekst)));
+};
+function zInternetu(url) {
+  if (natywne && natywne.pobierzZInternetu) {
+    return new Promise((ok, zle) => {
+      const id = ++nrZapytania;
+      oczekujace[id] = { ok, zle };
+      setTimeout(() => window.wynikInternetu(id, false, 'brak odpowiedzi'), 25000);
+      natywne.pobierzZInternetu(id, url);
+    });
+  }
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  return fetch(url, { signal: ac.signal, headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error(`GitHub ${r.status}`); return r.text(); })
+    .finally(() => clearTimeout(t));
 }
 
 // ---------- komunikaty ----------

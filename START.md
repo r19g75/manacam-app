@@ -39,12 +39,14 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
   bo kamera leży w obudowie bokiem i obraz z sensora jest obrócony o 90° w prawo). Sensor umie tylko 180°, więc 90/270 robi CSS.
   Celowanie dotknięciem liczone w układzie ekranu (przy 90/270 FOV poziomy/pionowy zamienione), zdjęcie obracane canvasem przed zapisem.
   Test headless (demo): klik nad środkiem → tilt+, w prawo → pan+, zdjęcie 800×600 → 600×800.
+  Sprawdzanie aktualizacji: `Natywne.pobierzZInternetu` (Java) pyta GitHuba przez sieć z internetem (VALIDATED,
+  inaczej requestNetwork CELLULAR), bo proces jest przypięty do Wi-Fi kamery — wcześniej w sieci kamery zawsze „brak internetu”.
   Do zrobienia: automatyczne 180° po przejściu pochylenia przez pion (czeka na decyzję o zakresie tilt > 45°).
 
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
    wiąże proces z Wi-Fi (`bindProcessToNetwork`). Przy Wi-Fi z internetem nic to nie zmienia.
-   Skutek: w sieci kamery sprawdzanie aktualizacji nie działa (normalne, ciche).
+   Sprawdzanie aktualizacji omija to przez `pobierzZInternetu` (dane komórkowe); bez danych komórkowych nie zadziała.
 2. Telefon może pytać „Sieć bez internetu — pozostać połączonym?”: odpowiedź TAK (aplikacja to podpowiada).
 3. Kamera ma **jedno miejsce na strumień**. Aplikacja zwalnia je w tle (`onPause` → `wTle(true)`).
    To samo urządzenie przejmuje strumień, inne dostaje 503 „kamera zajęta”.

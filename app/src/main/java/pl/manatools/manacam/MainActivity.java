@@ -23,7 +23,13 @@ import android.webkit.WebViewClient;
 
 import androidx.webkit.WebViewAssetLoader;
 
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -95,6 +101,61 @@ public class MainActivity extends Activity {
         cm.registerNetworkCallback(req, wifiCb);
     }
 
+    // Siec z dzialajacym internetem (proces jest przypiety do Wi-Fi kamery, ktore internetu nie ma).
+    // Najpierw sprawdzona juz siec (dane komorkowe albo Wi-Fi domowe), inaczej prosimy system o dane komorkowe.
+    private Network siecZInternetem() throws InterruptedException {
+        for (Network n : cm.getAllNetworks()) {
+            NetworkCapabilities c = cm.getNetworkCapabilities(n);
+            if (c != null && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) return n;
+        }
+        final Network[] wynik = {null};
+        final Object zamek = new Object();
+        ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network n) {
+                synchronized (zamek) { wynik[0] = n; zamek.notifyAll(); }
+            }
+        };
+        cm.requestNetwork(new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), cb);
+        try {
+            synchronized (zamek) { if (wynik[0] == null) zamek.wait(10000); }
+        } finally {
+            if (wynik[0] == null) cm.unregisterNetworkCallback(cb);
+            else zwolnijPozniej(cb);
+        }
+        return wynik[0];
+    }
+
+    // siec komorkowa trzymana jeszcze chwile po zapytaniu, potem oddajemy ja systemowi
+    private void zwolnijPozniej(ConnectivityManager.NetworkCallback cb) {
+        web.postDelayed(() -> {
+            try { cm.unregisterNetworkCallback(cb); } catch (Exception ignored) { }
+        }, 30000);
+    }
+
+    private String pobierzTekst(String adres) throws Exception {
+        Network n = siecZInternetem();
+        if (n == null) throw new Exception("brak sieci z internetem (wlacz dane komorkowe)");
+        HttpURLConnection c = (HttpURLConnection) n.openConnection(new URL(adres));
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(8000);
+        c.setRequestProperty("Accept", "application/vnd.github+json");
+        try {
+            if (c.getResponseCode() != 200) throw new Exception("GitHub " + c.getResponseCode());
+            try (InputStream in = c.getInputStream()) {
+                ByteArrayOutputStream b = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                for (int k; (k = in.read(buf)) > 0; ) b.write(buf, 0, k);
+                return b.toString("UTF-8");
+            }
+        } finally {
+            c.disconnect();
+        }
+    }
+
     private void otworzZewnetrznie(String url) {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
@@ -147,6 +208,24 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public int wersjaKod() {
             return BuildConfig.VERSION_CODE;
+        }
+
+        // Zapytanie do internetu z pominieciem Wi-Fi kamery. Wynik: window.wynikInternetu(id, ok, tekst).
+        @JavascriptInterface
+        public void pobierzZInternetu(final int id, final String adres) {
+            new Thread(() -> {
+                boolean ok;
+                String tekst;
+                try {
+                    tekst = pobierzTekst(adres);
+                    ok = true;
+                } catch (Exception e) {
+                    tekst = String.valueOf(e.getMessage());
+                    ok = false;
+                }
+                final String js = "window.wynikInternetu && wynikInternetu(" + id + "," + ok + "," + JSONObject.quote(tekst) + ")";
+                web.post(() -> web.evaluateJavascript(js, null));
+            }).start();
         }
 
         @JavascriptInterface
