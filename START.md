@@ -31,7 +31,9 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
 ## Stan
 - 2026-10-12: aplikacja napisana; interfejs sprawdzony w headless Chrome (360 px pion i poziom, demo) i **z prawdziwą
   kamerą manaCam-D328** (firmware S1A): obraz na żywo, stan, wyszarzona głowica (PCA9685 nie podłączony).
-  APK jeszcze nie budowany: czeka na utworzenie repo na GitHubie.
+- 2026-10-12: repo **publiczne** https://github.com/r19g75/manacam-app, sekrety ustawione, wydania v1.0.1 i v1.0.2 zbudowane
+  (podpis zgodny z `podpis-sha256.txt`). Pobranie: https://github.com/r19g75/manacam-app/releases/latest
+  Na telefonie jeszcze nie testowane.
 
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
@@ -48,7 +50,12 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
    Funkcje z późniejszych etapów (zoom S5) → 404 → komunikat „brak funkcji”.
 8. Instalacja APK: Android poprosi o zgodę „instaluj z nieznanych źródeł” dla przeglądarki (jednorazowo).
 
+9. CI: `runs-on: ubuntu-24.04` i Gradle 8.10.2 + AGP 8.7.3 przypięte świadomie (ubuntu-latest → 26 od 19.10.2026).
+   Aktualizacja Gradle/AGP tylko razem i z testem budowy. Ostrzeżenia CI czytać po każdym pushu (`gh run view`).
+10. Każdy push na `main` = nowe wydanie dla telefonów. Zmiany próbne: osobna gałąź.
+11. Edycje plików przez `sed` z `#` w treści psują się (separator) — używać edycji Pythonem/Edit.
+
 ## Następne kroki
-1. Utworzyć publiczne repo `r19g75/manacam-app`, ustawić sekrety, push → pierwsze wydanie; zainstalować na telefonie.
+1. Zainstalować APK na telefonie (link wyżej).
 2. Test na telefonie w sieci kamery (pułapka 1!), zdjęcie do Galerii, powrót z tła.
 3. Firmware S2 (bateria) / S3 (kalibracja serw, kierunki zgodne z `API.md`) / S4 (≥10 kl./s; teraz ~8,8 przy SVGA).
