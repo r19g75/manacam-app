@@ -35,6 +35,12 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
   (podpis zgodny z `podpis-sha256.txt`). Pobranie: https://github.com/r19g75/manacam-app/releases/latest
   Na telefonie jeszcze nie testowane.
 
+- 2026-10-12 (P620): obrót widoku w aplikacji (Ustawienia > Obraz > Obrót widoku, `cfg.widok`, domyślnie 270 = 90° w lewo,
+  bo kamera leży w obudowie bokiem i obraz z sensora jest obrócony o 90° w prawo). Sensor umie tylko 180°, więc 90/270 robi CSS.
+  Celowanie dotknięciem liczone w układzie ekranu (przy 90/270 FOV poziomy/pionowy zamienione), zdjęcie obracane canvasem przed zapisem.
+  Test headless (demo): klik nad środkiem → tilt+, w prawo → pan+, zdjęcie 800×600 → 600×800.
+  Do zrobienia: automatyczne 180° po przejściu pochylenia przez pion (czeka na decyzję o zakresie tilt > 45°).
+
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
    wiąże proces z Wi-Fi (`bindProcessToNetwork`). Przy Wi-Fi z internetem nic to nie zmienia.

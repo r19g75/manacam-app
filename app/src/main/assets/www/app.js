@@ -16,7 +16,10 @@ const cfg = (() => {
   let c = {};
   try { c = JSON.parse(localStorage.getItem('manacam') || '{}'); } catch (e) { /* brak/zablokowany storage */ }
   return { adres: c.adres || '192.168.4.1', haslo: c.haslo || 'manatools', krok: c.krok || 5, demo: !!c.demo,
-           ledOst: c.ledOst || 128, aktSprawdzono: c.aktSprawdzono || 0 };
+           ledOst: c.ledOst || 128, aktSprawdzono: c.aktSprawdzono || 0,
+           // obrot widoku w aplikacji (stopnie zgodnie z zegarem). Kamera lezy w obudowie bokiem, obraz z sensora
+           // jest obrocony o 90 w prawo -> domyslnie 270 (90 w lewo). Sensor sam umie tylko 180 (Ustawienia > obraz).
+           widok: [0, 90, 180, 270].includes(c.widok) ? c.widok : 270 };
 })();
 if (new URLSearchParams(location.search).has('demo')) cfg.demo = true;   // test w przegladarce: index.html?demo
 function zapiszCfg() { try { localStorage.setItem('manacam', JSON.stringify(cfg)); } catch (e) { /* trudno */ } }
@@ -246,20 +249,49 @@ document.querySelectorAll('.poz').forEach(b => {
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
 
+// ---------- obrot widoku ----------
+// Przy 90/270 obrazek ma zamienione wymiary (szer. = wys. ramki) i jest obracany wokol srodka ramki.
+const bokiem = () => cfg.widok === 90 || cfg.widok === 270;
+function ulozObraz() {
+  const ramka = $('obraz'), img = $('strumien');
+  ramka.classList.toggle('pion', bokiem());
+  img.classList.toggle('obrocony', bokiem());
+  img.style.setProperty('--w', ramka.clientWidth + 'px');
+  img.style.setProperty('--h', ramka.clientHeight + 'px');
+  img.style.setProperty('--obr', cfg.widok + 'deg');
+}
+new ResizeObserver(ulozObraz).observe($('obraz'));
+
 // dotkniecie obrazu = wyceluj w ten punkt (pan+ = w prawo, tilt+ = w gore, patrz API.md)
+// Liczone w ukladzie ekranu: po obrocie widoku obraz stoi prosto, wiec poziom ekranu = obrot glowicy.
 $('obraz').addEventListener('click', e => {
   if (!polaczony || !stan || !stan.glowica) return;
   const img = $('strumien');
-  const r = img.getBoundingClientRect();
-  const nw = img.naturalWidth || 4, nh = img.naturalHeight || 3;
+  const r = $('obraz').getBoundingClientRect();
+  let nw = img.naturalWidth || 4, nh = img.naturalHeight || 3;
+  let fovX = FOV_X, fovY = FOV_Y;
+  if (bokiem()) { [nw, nh] = [nh, nw]; [fovX, fovY] = [fovY, fovX]; }
   const skala = Math.min(r.width / nw, r.height / nh);       // object-fit: contain
-  const w = nw * skala, h = nh * skala;
-  const x = (e.clientX - r.left - (r.width - w) / 2) / w - 0.5;
-  const y = (e.clientY - r.top - (r.height - h) / 2) / h - 0.5;
+  const x = (e.clientX - r.left - r.width / 2) / (nw * skala);
+  const y = (e.clientY - r.top - r.height / 2) / (nh * skala);
   if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) return;          // klik w czarny pas
   const z = stan.zoom || 1;
-  ruszDo(cel.pan + x * FOV_X / z, cel.tilt - y * FOV_Y / z);
+  ruszDo(cel.pan + x * fovX / z, cel.tilt - y * fovY / z);
 });
+
+// zdjecie z kamery obrocone tak jak widok (JPEG ponownie kodowany tylko przy obrocie)
+async function obrocZdjecie(blob) {
+  if (!cfg.widok) return blob;
+  const bmp = await createImageBitmap(blob);
+  const c = document.createElement('canvas');
+  c.width = bokiem() ? bmp.height : bmp.width;
+  c.height = bokiem() ? bmp.width : bmp.height;
+  const g = c.getContext('2d');
+  g.translate(c.width / 2, c.height / 2);
+  g.rotate(cfg.widok * Math.PI / 180);
+  g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+  return new Promise((ok, zle) => c.toBlob(b => (b ? ok(b) : zle(new BladApi('Nie udało się obrócić zdjęcia', -1))), 'image/jpeg', 0.92));
+}
 
 $('btnZoom').addEventListener('click', () => api('/api/zoom', { v: (stan && stan.zoom > 1) ? 1 : 2 }).catch(pokazBlad));
 $('btnLed').addEventListener('click', () => {
@@ -276,7 +308,7 @@ $('btnFoto').addEventListener('click', async () => {
   const b = $('btnFoto');
   b.disabled = true; b.textContent = 'Zdjęcie…';
   try {
-    const blob = await api('/capture', {}, 15000);
+    const blob = await obrocZdjecie(await api('/capture', {}, 15000));
     if (natywne) {
       const b64 = await new Promise((ok, zle) => {
         const fr = new FileReader();
@@ -300,6 +332,7 @@ function otworzUstawienia() {
   $('ustAdres').value = cfg.adres;
   $('ustHaslo').value = cfg.haslo;
   $('ustDemo').checked = cfg.demo;
+  $('ustWidok').value = cfg.widok;
   if (stan) {
     $('ustRozdz').value = stan.rozdz || 'SVGA';
     $('ustJakosc').value = stan.jakosc || 12;
@@ -332,6 +365,7 @@ $('btnZapiszObraz').addEventListener('click', () => {
     .then(() => { toast('Zastosowano'); if (polaczony) { stopStrumienia(); startStrumienia(); } })
     .catch(pokazBlad);
 });
+$('ustWidok').addEventListener('change', e => { cfg.widok = +e.target.value; zapiszCfg(); ulozObraz(); });
 $('ustDemo').addEventListener('change', e => {
   cfg.demo = e.target.checked; zapiszCfg();
   polaczony = false; stan = null; stopStrumienia(); komunikat('Łączenie z kamerą…'); odswiez();
@@ -419,6 +453,7 @@ function demoObraz() {
 
 // ---------- start ----------
 zaznaczKrok();
+ulozObraz();
 odswiez();
 petlaStanu();
 if (Date.now() - cfg.aktSprawdzono > 24 * 3600 * 1000) setTimeout(() => sprawdzAktualizacje(false), 4000);

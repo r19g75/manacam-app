@@ -66,7 +66,15 @@
     <select id="ustRozdz"><option>VGA</option><option selected>SVGA</option><option>XGA</option></select>
   </label>
   <label>Jakość JPEG (mniej = lepiej) <input id="ustJakosc" type="number" min="10" max="40" value="12"></label>
-  <label class="wiersz"><input id="ustObrot" type="checkbox"> Obraz do góry nogami (180°)</label>
+  <label>Obrót widoku (w telefonie, zapamiętywany od razu)
+    <select id="ustWidok">
+      <option value="0">bez obrotu</option>
+      <option value="90">90° w prawo</option>
+      <option value="180">180°</option>
+      <option value="270">90° w lewo (kamera bokiem w obudowie)</option>
+    </select>
+  </label>
+  <label class="wiersz"><input id="ustObrot" type="checkbox"> Obraz do góry nogami (180°, w kamerze)</label>
   <label class="wiersz"><input id="ustLustro" type="checkbox"> Odbicie lustrzane</label>
   <button id="btnZapiszObraz">Zastosuj</button>
 

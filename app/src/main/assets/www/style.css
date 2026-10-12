@@ -21,7 +21,11 @@ header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; backg
 
 main { display: flex; flex-direction: column; height: calc(100% - 60px); }
 .obraz { position: relative; background: #000; aspect-ratio: 4 / 3; max-height: 58vh; width: 100%; overflow: hidden; }
-.obraz img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.obraz.pion { aspect-ratio: 3 / 4; }
+.obraz img { width: 100%; height: 100%; object-fit: contain; display: block; transform: rotate(var(--obr, 0deg)); }
+/* 90/270: wymiary zamienione, obrot wokol srodka ramki (--w/--h ustawia ulozObraz) */
+.obraz img.obrocony { position: absolute; left: 50%; top: 50%; width: var(--h); height: var(--w);
+  transform: translate(-50%, -50%) rotate(var(--obr)); }
 .komunikat { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   text-align: center; padding: 16px; background: rgba(0,0,0,.6); }
 .komunikat[hidden] { display: none; }
@@ -64,7 +68,7 @@ main { display: flex; flex-direction: column; height: calc(100% - 60px); }
 
 @media (orientation: landscape) {
   main { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: auto 1fr; }
-  .obraz { grid-row: 1 / 3; max-height: none; height: 100%; aspect-ratio: auto; }
+  .obraz, .obraz.pion { grid-row: 1 / 3; max-height: none; height: 100%; aspect-ratio: auto; }
   .pasek { grid-column: 2; flex-wrap: wrap; }
   .sterowanie { grid-column: 2; flex-direction: row; overflow-y: auto; padding-top: 0; }
   .krzyz { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 4px; }
