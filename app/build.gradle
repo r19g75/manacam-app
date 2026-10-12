@@ -1,0 +1,45 @@
+plugins { id 'com.android.application' }
+
+// Wersja z GitHub Actions: -PversionCode=<numer przebiegu> -PversionName=1.0.<numer>
+def vCode = (project.findProperty('versionCode') ?: '1') as Integer
+def vName = (project.findProperty('versionName') ?: '1.0.0-dev') as String
+
+android {
+    namespace 'pl.manatools.manacam'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'pl.manatools.manacam'
+        minSdk 29          // MediaStore bez uprawnien (zapis zdjec), Android 10+
+        targetSdk 35
+        versionCode vCode
+        versionName vName
+    }
+    // Klucz podpisu z sekretow GitHuba (MANACAM_KEYSTORE* w env). Ten sam klucz = aktualizacja instaluje sie na stara wersje.
+    signingConfigs {
+        release {
+            def ks = System.getenv('MANACAM_KEYSTORE')
+            if (ks) {
+                storeFile file(ks)
+                storeType 'pkcs12'
+                storePassword System.getenv('MANACAM_KEYSTORE_PASS')
+                keyAlias 'manacam'
+                keyPassword System.getenv('MANACAM_KEYSTORE_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('MANACAM_KEYSTORE') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

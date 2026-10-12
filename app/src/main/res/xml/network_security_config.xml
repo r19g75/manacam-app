@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kamera mowi zwyklym HTTP (192.168.4.1 albo adres w sieci zakladu) - cleartext dozwolony -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

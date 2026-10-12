@@ -1,0 +1,10 @@
+# klucz podpisu NIGDY w repo (lezy w ../manaCam_app_KLUCZ i w sekretach GitHuba)
+*.p12
+*.jks
+*.keystore
+haslo.txt
+.gradle/
+build/
+local.properties
+.idea/
+*.iml

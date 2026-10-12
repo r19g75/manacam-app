@@ -1,0 +1,61 @@
+name: Buduj APK i wydaj
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      WERSJA: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      # Bez wlasciwego klucza NIE wydajemy: APK z innym podpisem nie zainstaluje sie na starej wersji.
+      - name: Klucz podpisu
+        env:
+          KS_B64: ${{ secrets.MANACAM_KEYSTORE_B64 }}
+        run: |
+          test -n "$KS_B64" || { echo "::error::Brak sekretu MANACAM_KEYSTORE_B64 (patrz START.md)"; exit 1; }
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/manacam.p12"
+          echo "MANACAM_KEYSTORE=$RUNNER_TEMP/manacam.p12" >> "$GITHUB_ENV"
+
+      - name: Buduj
+        env:
+          MANACAM_KEYSTORE_PASS: ${{ secrets.MANACAM_KEYSTORE_PASS }}
+        run: gradle --no-daemon assembleRelease -PversionCode=${{ github.run_number }} -PversionName=$WERSJA
+
+      - name: Sprawdz podpis
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs "$APK" | tee podpis.txt
+          JEST=$(grep -m1 'certificate SHA-256 digest' podpis.txt | awk '{print $NF}')
+          MA_BYC=$(tr -d ' \r\n' < podpis-sha256.txt)
+          [ "$JEST" = "$MA_BYC" ] || { echo "::error::Podpis $JEST rozny od podpis-sha256.txt ($MA_BYC)"; exit 1; }
+          cp "$APK" "manaCam-$WERSJA.apk"
+
+      - name: Wydanie na GitHubie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$WERSJA" "manaCam-$WERSJA.apk" --title "manaCam $WERSJA" \
+            --notes "$(git log -1 --pretty=%B)" --latest

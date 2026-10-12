@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>manaCam</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <span id="kropka" class="kropka"></span>
+  <span id="nazwa">manaCam</span>
+  <span id="bateria" class="bateria" hidden></span>
+  <button id="btnUst" class="ikona" aria-label="Ustawienia">&#9881;</button>
+</header>
+
+<main id="ekranGlowny">
+  <div id="obraz" class="obraz">
+    <img id="strumien" alt="">
+    <div id="celownik" class="celownik"></div>
+    <div id="komunikat" class="komunikat">Łączenie z kamerą…</div>
+  </div>
+
+  <div class="pasek">
+    <button id="btnZoom" class="przelacznik">1×</button>
+    <button id="btnLed" class="przelacznik">Led</button>
+    <input id="ledSuwak" type="range" min="0" max="255" step="5" value="0" aria-label="Jasność leda">
+    <button id="btnFoto">Zdjęcie</button>
+  </div>
+
+  <div class="sterowanie">
+    <div class="krzyz">
+      <button class="kier" data-dp="0" data-dt="1" style="grid-area:g">&#9650;</button>
+      <button class="kier" data-dp="-1" data-dt="0" style="grid-area:l">&#9664;</button>
+      <button id="btnSrodek" style="grid-area:s">Środek</button>
+      <button class="kier" data-dp="1" data-dt="0" style="grid-area:p">&#9654;</button>
+      <button class="kier" data-dp="0" data-dt="-1" style="grid-area:d">&#9660;</button>
+    </div>
+    <div class="boczne">
+      <div class="krok">
+        <span>Krok</span>
+        <button class="krokBtn" data-k="1">1°</button>
+        <button class="krokBtn" data-k="5">5°</button>
+        <button class="krokBtn" data-k="15">15°</button>
+      </div>
+      <div id="pozycja" class="pozycja">obrót – / pochylenie –</div>
+      <div class="pozycje">
+        <button class="poz" data-n="1">1</button>
+        <button class="poz" data-n="2">2</button>
+        <button class="poz" data-n="3">3</button>
+        <button class="poz" data-n="4">4</button>
+      </div>
+      <div class="podpowiedz">Pozycja: krótko = jedź, przytrzymaj = zapisz. Dotknij obrazu, aby wycelować.</div>
+    </div>
+  </div>
+</main>
+
+<section id="ekranUst" class="ustawienia" hidden>
+  <h2>Ustawienia</h2>
+  <label>Adres kamery <input id="ustAdres" inputmode="url" autocomplete="off" spellcheck="false"></label>
+  <label>Hasło administratora <input id="ustHaslo" type="password" autocomplete="off"></label>
+  <button id="btnZapiszPol">Zapisz i połącz</button>
+
+  <h3>Obraz</h3>
+  <label>Rozdzielczość
+    <select id="ustRozdz"><option>VGA</option><option selected>SVGA</option><option>XGA</option></select>
+  </label>
+  <label>Jakość JPEG (mniej = lepiej) <input id="ustJakosc" type="number" min="10" max="40" value="12"></label>
+  <label class="wiersz"><input id="ustObrot" type="checkbox"> Obraz do góry nogami (180°)</label>
+  <label class="wiersz"><input id="ustLustro" type="checkbox"> Odbicie lustrzane</label>
+  <button id="btnZapiszObraz">Zastosuj</button>
+
+  <h3>Kamera</h3>
+  <div id="ustKamera" class="info">–</div>
+
+  <h3>Aplikacja</h3>
+  <div id="ustApka" class="info">–</div>
+  <button id="btnAkt">Sprawdź aktualizację</button>
+  <div id="aktWynik" class="info"></div>
+  <label class="wiersz"><input id="ustDemo" type="checkbox"> Tryb demo (bez kamery)</label>
+
+  <button id="btnZamknij" class="glowny">Gotowe</button>
+</section>
+
+<div id="toast" class="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+:root {
+  --tlo: #0f1720; --panel: #1b2632; --przycisk: #2a3a4b; --aktywny: #f2a93b;
+  --tekst: #e8eef4; --slaby: #8fa1b3; --ok: #3fbf6f; --blad: #e5534b; --ostrz: #e0b23a;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--tlo); color: var(--tekst);
+  font: 16px/1.35 system-ui, sans-serif; user-select: none; -webkit-user-select: none; overscroll-behavior: none; overflow-x: hidden; }
+button, select, input { font: inherit; color: inherit; }
+button { background: var(--przycisk); border: 0; border-radius: 10px; padding: 10px 12px; min-height: 44px; touch-action: manipulation; }
+button:active, button.wcisniety { background: var(--aktywny); color: #111; }
+button.wl { background: var(--aktywny); color: #111; }
+button:disabled { opacity: .4; }
+
+header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); }
+#nazwa { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kropka { width: 12px; height: 12px; border-radius: 50%; background: var(--blad); flex: none; }
+.kropka.ok { background: var(--ok); } .kropka.ostrz { background: var(--ostrz); }
+.bateria { font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 6px; background: var(--przycisk); }
+.bateria.niska { background: var(--blad); }
+.ikona { min-width: 44px; font-size: 22px; padding: 4px; background: transparent; }
+
+main { display: flex; flex-direction: column; height: calc(100% - 60px); }
+.obraz { position: relative; background: #000; aspect-ratio: 4 / 3; max-height: 58vh; width: 100%; overflow: hidden; }
+.obraz img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.komunikat { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 16px; background: rgba(0,0,0,.6); }
+.komunikat[hidden] { display: none; }
+.celownik { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+  border: 2px solid rgba(255,255,255,.6); border-radius: 50%; pointer-events: none; }
+
+.pasek { display: flex; gap: 8px; padding: 8px 12px; align-items: center; }
+.pasek input[type=range] { flex: 1; min-width: 0; }
+.przelacznik { min-width: 56px; }
+
+.sterowanie { display: flex; gap: 12px; padding: 4px 12px 12px; flex: 1; align-items: flex-start; }
+.krzyz { display: grid; grid-template-areas: ". g ." "l s p" ". d ."; grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px); gap: 6px; flex: none; }
+.krzyz button { padding: 0; font-size: 22px; }
+#btnSrodek { font-size: 13px; }
+.boczne { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.krok { display: flex; gap: 6px; align-items: center; }
+.krok span { color: var(--slaby); font-size: 14px; }
+.krok button { flex: 1; padding: 6px 0; }
+.pozycja { font-variant-numeric: tabular-nums; color: var(--slaby); font-size: 14px; }
+.pozycje { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.pozycje button, .krok button { min-width: 0; padding-left: 0; padding-right: 0; }
+.poz.pusta { opacity: .5; }
+.podpowiedz { color: var(--slaby); font-size: 12px; }
+
+.ustawienia { position: fixed; inset: 0; overflow-y: auto; background: var(--tlo); padding: 12px 16px 32px; z-index: 5; }
+.ustawienia h2 { margin: 4px 0 12px; } .ustawienia h3 { margin: 20px 0 8px; color: var(--slaby); font-size: 15px; }
+.ustawienia label { display: block; margin: 8px 0; }
+.ustawienia label input:not([type=checkbox]), .ustawienia select { display: block; width: 100%; margin-top: 4px;
+  padding: 10px; border-radius: 8px; border: 1px solid #34465a; background: var(--panel); user-select: text; -webkit-user-select: text; }
+.ustawienia label.wiersz { display: flex; gap: 10px; align-items: center; }
+.ustawienia label.wiersz input { width: 22px; height: 22px; }
+.ustawienia > button { width: 100%; margin-top: 8px; }
+.ustawienia .glowny { margin-top: 24px; background: var(--aktywny); color: #111; }
+.info { color: var(--slaby); font-size: 14px; white-space: pre-line; }
+
+.toast { position: fixed; left: 16px; right: 16px; bottom: 20px; padding: 12px 14px; border-radius: 10px;
+  background: #33475c; box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 10; }
+.toast.blad { background: var(--blad); }
+
+@media (orientation: landscape) {
+  main { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: auto 1fr; }
+  .obraz { grid-row: 1 / 3; max-height: none; height: 100%; aspect-ratio: auto; }
+  .pasek { grid-column: 2; flex-wrap: wrap; }
+  .sterowanie { grid-column: 2; flex-direction: row; overflow-y: auto; padding-top: 0; }
+  .krzyz { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 4px; }
+  .podpowiedz { display: none; }
+  .pasek .przelacznik { min-width: 44px; }
+}
