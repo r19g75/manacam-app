@@ -93,9 +93,22 @@ let cel = { pan: 0, tilt: 0 };
 let ostatniRuch = 0;
 let ostrzezenieApi = false;
 
+// klatki/s z licznika klatek kamery (co najmniej 0,9 s miedzy probkami; licznik zeruje sie przy nowym strumieniu)
+let fpsProbka = null, fps = null;
+function liczFps(k) {
+  const t = Date.now();
+  if (typeof k !== 'number') { fpsProbka = null; fps = null; return; }
+  if (!fpsProbka || k < fpsProbka.k) { fpsProbka = { k, t }; fps = null; return; }
+  if (t - fpsProbka.t < 900) return;
+  const v = (k - fpsProbka.k) * 1000 / (t - fpsProbka.t);
+  fps = fps === null ? v : (fps + v) / 2;
+  fpsProbka = { k, t };
+}
+
 function ustawStan(j) {
   if (!j || typeof j !== 'object' || !('api' in j)) return;
   stan = j;
+  liczFps(j.klatki);
   if (j.api !== API_WERSJA && !ostrzezenieApi) {
     ostrzezenieApi = true;
     toast(`Kamera ma API ${j.api}, aplikacja ${API_WERSJA}. Zaktualizuj ${j.api > API_WERSJA ? 'aplikację' : 'kamerę'}.`, true);
@@ -107,6 +120,7 @@ function ustawStan(j) {
 
 function odswiez() {
   const s = stan;
+  pokazLacze(s);
   $('kropka').className = 'kropka' + (polaczony ? (s && s.kamera === false ? ' ostrz' : ' ok') : '');
   $('nazwa').textContent = (s && s.nazwa) || 'manaCam';
   const bat = $('bateria');
@@ -156,6 +170,19 @@ async function petlaStanu() {
     odswiez();
   }
   setTimeout(petlaStanu, OKRES_STANU);
+}
+
+// Sygnal: ok >= -60 dBm, ostrz do -72, blad ponizej (przy -75 i gorzej obraz wyraznie zwalnia)
+function pokazLacze(s) {
+  const el = $('lacze');
+  el.hidden = !polaczony || !s || cfg.demo;
+  if (el.hidden) return;
+  const db = typeof s.sygnal === 'number' ? s.sygnal : null;
+  const kreski = db === null ? 0 : db >= -55 ? 4 : db >= -65 ? 3 : db >= -72 ? 2 : db >= -80 ? 1 : 0;
+  el.className = 'lacze' + (db === null ? '' : db >= -60 ? ' ok' : db >= -72 ? ' ostrz' : ' blad');
+  el.querySelectorAll('.kreski i').forEach((k, i) => k.classList.toggle('wl', i < kreski));
+  const f = s.strumien_zajety && fps !== null ? ` · ${fps.toFixed(fps < 10 ? 1 : 0)} kl/s` : '';
+  $('laczeTxt').textContent = (db === null ? '– dBm' : `${db} dBm`) + f;
 }
 
 // ---------- strumien ----------
