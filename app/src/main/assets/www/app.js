@@ -10,6 +10,8 @@ const DLUGIE_WCISNIECIE = 600;
 
 const $ = id => document.getElementById(id);
 const natywne = window.Natywne || null;
+// Strona podana przez sama kamere (http://192.168.4.1/) - adres kamery = adres strony, aktualizacje razem z firmware.
+const zKamery = !natywne && location.protocol === 'http:' && location.hostname !== 'appassets.androidplatform.net';
 
 // ---------- ustawienia (localStorage) ----------
 const cfg = (() => {
@@ -21,6 +23,7 @@ const cfg = (() => {
            // jest obrocony o 90 w prawo -> domyslnie 270 (90 w lewo). Sensor sam umie tylko 180 (Ustawienia > obraz).
            widok: [0, 90, 180, 270].includes(c.widok) ? c.widok : 270 };
 })();
+if (zKamery) cfg.adres = location.hostname;
 if (new URLSearchParams(location.search).has('demo')) cfg.demo = true;   // test w przegladarce: index.html?demo
 function zapiszCfg() { try { localStorage.setItem('manacam', JSON.stringify(cfg)); } catch (e) { /* trudno */ } }
 
@@ -137,6 +140,7 @@ async function petlaStanu() {
       await api('/api/stan');
       if (!polaczony) { polaczony = true; bledyZRzedu = 0; startStrumienia(); }
       bledyZRzedu = 0;
+      strazStrumienia();
     } catch (e) {
       if (e.kod === 401 || e.kod === 404) {
         if (polaczony) stopStrumienia();
@@ -156,16 +160,44 @@ async function petlaStanu() {
 
 // ---------- strumien ----------
 let ponowStrumien = null, czekajKlatke = null;
+// Straz strumienia: polaczenie potrafi sie otworzyc bez klatek albo zamarznac (np. po powrocie sieci kamery,
+// telefon chwilowo na danych komorkowych). Bez tego aplikacja wisiala na "Uruchamianie obrazu..." w nieskonczonosc.
+const LIMIT_PIERWSZEJ_KLATKI = 6000;   // ms
+const LIMIT_ZASTOJU = 5;               // kolejne odczyty stanu (co OKRES_STANU) bez nowych klatek; > limit zapisu w kamerze (4 s)
+let strumienOd = 0, klatkaJest = false, ostKlatki = -1, zastoj = 0;
+
+function strazStrumienia() {
+  if (wTleFlaga || !polaczony || cfg.demo || !strumienOd || ponowStrumien) return;
+  let powod = null;
+  if (!klatkaJest) {
+    if (Date.now() - strumienOd > LIMIT_PIERWSZEJ_KLATKI) powod = 'brak pierwszej klatki';
+  } else if (stan) {
+    // kamera nie widzi naszego polaczenia albo licznik klatek stoi (firmware bez "klatki": tylko pierwszy warunek)
+    const stoi = stan.strumien_zajety === false || (typeof stan.klatki === 'number' && stan.klatki === ostKlatki);
+    zastoj = stoi ? zastoj + 1 : 0;
+    ostKlatki = typeof stan.klatki === 'number' ? stan.klatki : -1;
+    if (zastoj >= LIMIT_ZASTOJU) powod = 'obraz zamarzl';
+  }
+  if (powod) {
+    console.log('strumien: ponawiam (' + powod + ')');
+    stopStrumienia();
+    komunikat('Obraz nie dochodzi. Ponawiam…');
+    ponowStrumien = setTimeout(startStrumienia, 500);
+  }
+}
 
 function startStrumienia() {
-  clearTimeout(ponowStrumien);
+  clearTimeout(ponowStrumien); ponowStrumien = null;
   clearInterval(czekajKlatke);
   if (wTleFlaga || !polaczony) return;
   const img = $('strumien');
   komunikat('Uruchamianie obrazu…');
   if (cfg.demo) { demoObraz(); return; }
+  strumienOd = Date.now(); klatkaJest = false; ostKlatki = -1; zastoj = 0;
+  img.onerror = null; img.onload = null;
+  img.removeAttribute('src');            // bez tego naturalWidth moze zostac po starym obrazie
   // onload dla MJPEG nie jest pewny w kazdej wersji WebView - pierwsza klatka = naturalWidth > 0
-  const pierwszaKlatka = () => { clearInterval(czekajKlatke); komunikat(null); };
+  const pierwszaKlatka = () => { clearInterval(czekajKlatke); klatkaJest = true; komunikat(null); };
   czekajKlatke = setInterval(() => { if (img.naturalWidth > 0) pierwszaKlatka(); }, 300);
   img.onload = pierwszaKlatka;
   img.onerror = () => {
@@ -179,7 +211,8 @@ function startStrumienia() {
 }
 
 function stopStrumienia() {
-  clearTimeout(ponowStrumien);
+  clearTimeout(ponowStrumien); ponowStrumien = null;
+  strumienOd = 0;
   clearInterval(czekajKlatke);
   const img = $('strumien');
   img.onerror = null; img.onload = null;
@@ -330,6 +363,7 @@ $('btnFoto').addEventListener('click', async () => {
 // ---------- ustawienia ----------
 function otworzUstawienia() {
   $('ustAdres').value = cfg.adres;
+  $('ustAdres').disabled = zKamery;
   $('ustHaslo').value = cfg.haslo;
   $('ustDemo').checked = cfg.demo;
   $('ustWidok').value = cfg.widok;
@@ -343,7 +377,10 @@ function otworzUstawienia() {
     ? `${stan.nazwa}, program ${stan.wersja} (API ${stan.api})\nczas pracy ${Math.floor(stan.czas / 3600)} h ${Math.floor(stan.czas / 60) % 60} min, ostatni restart: ${stan.restart}` +
       (stan.sta_ip ? `\nadres w sieci zakładu: ${stan.sta_ip}` : '')
     : 'brak połączenia';
-  $('ustApka').textContent = natywne ? `wersja ${natywne.wersja()} (${natywne.wersjaKod()})` : 'uruchomiona w przeglądarce (bez aktualizacji)';
+  $('ustApka').textContent = natywne ? `wersja ${natywne.wersja()} (${natywne.wersjaKod()})`
+    : zKamery ? 'strona z kamery: aktualizuje się razem z programem kamery.\nSkrót na ekranie: menu Chrome → Dodaj do ekranu głównego.'
+    : 'uruchomiona w przeglądarce (bez aktualizacji)';
+  $('btnAkt').hidden = !natywne;
   $('ekranUst').hidden = false;
 }
 function zamknijUstawienia() { $('ekranUst').hidden = true; }
@@ -352,7 +389,7 @@ window.wstecz = () => { if (!$('ekranUst').hidden) { zamknijUstawienia(); return
 $('btnUst').addEventListener('click', otworzUstawienia);
 $('btnZamknij').addEventListener('click', zamknijUstawienia);
 $('btnZapiszPol').addEventListener('click', () => {
-  cfg.adres = normalizujAdres($('ustAdres').value);
+  if (!zKamery) cfg.adres = normalizujAdres($('ustAdres').value);
   cfg.haslo = $('ustHaslo').value;
   zapiszCfg();
   polaczony = false; stopStrumienia(); ostrzezenieApi = false;

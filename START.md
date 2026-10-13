@@ -43,6 +43,11 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
   inaczej requestNetwork CELLULAR), bo proces jest przypięty do Wi-Fi kamery — wcześniej w sieci kamery zawsze „brak internetu”.
   Do zrobienia: automatyczne 180° po przejściu pochylenia przez pion (czeka na decyzję o zakresie tilt > 45°).
 
+- 2026-10-13: straż strumienia (`strazStrumienia` w app.js): brak pierwszej klatki w 6 s albo zamarznięcie
+  (`klatki` z `/api/stan` stoją / kamera nie widzi strumienia przez 5 odczytów) → automatyczne ponowienie. Wcześniej po
+  wyjęciu baterii aplikacja wisiała na „Uruchamianie obrazu…”. Strona z kamery (`zKamery`): adres = adres strony, bez
+  przycisku aktualizacji. Sprawdzone w headless Chrome na stronie z kamery (firmware S1B).
+
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
    wiąże proces z Wi-Fi (`bindProcessToNetwork`). Przy Wi-Fi z internetem nic to nie zmienia.
