@@ -207,7 +207,7 @@ function pokazObserwacje(s) {
 $('btnObs').addEventListener('click', () => {
   const wl = !(stan && stan.obserwacja);
   api('/api/obserwacja', { wl: wl ? 1 : 0 })
-    .then(() => toast(wl ? 'Obserwacja włączona (zostaje po wyłączeniu zasilania)' : 'Obserwacja wyłączona'))
+    .then(() => toast(wl ? 'Obserwacja włączona (do wyłączenia albo do odłączenia zasilania)' : 'Obserwacja wyłączona'))
     .catch(pokazBlad);
 });
 $('ustCzulosc').addEventListener('input', e => { $('ustCzuloscTxt').textContent = e.target.value; });
