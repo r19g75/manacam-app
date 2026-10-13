@@ -162,21 +162,25 @@ async function petlaStanu() {
 let ponowStrumien = null, czekajKlatke = null;
 // Straz strumienia: polaczenie potrafi sie otworzyc bez klatek albo zamarznac (np. po powrocie sieci kamery,
 // telefon chwilowo na danych komorkowych). Bez tego aplikacja wisiala na "Uruchamianie obrazu..." w nieskonczonosc.
-const LIMIT_PIERWSZEJ_KLATKI = 6000;   // ms
-const LIMIT_ZASTOJU = 5;               // kolejne odczyty stanu (co OKRES_STANU) bez nowych klatek; > limit zapisu w kamerze (4 s)
-let strumienOd = 0, klatkaJest = false, ostKlatki = -1, zastoj = 0;
+// Limity w czasie, nie w liczbie odczytow: przy slabym laczu jedna klatka idzie kilka sekund. Oba > limit klatki
+// w kamerze (15 s), zeby to kamera zrywala pierwsza; zerwanie widac szybko po strumien_zajety=false.
+const LIMIT_PIERWSZEJ_KLATKI = 20000;  // ms
+const LIMIT_ZASTOJU_MS = 20000;        // licznik klatek stoi tak dlugo = zamarzlo
+const LIMIT_NIEZAJETY = 3;             // kolejne odczyty stanu: kamera nie widzi naszego polaczenia
+let strumienOd = 0, klatkaJest = false, ostKlatki = -1, klatkiOd = 0, niezajety = 0;
 
 function strazStrumienia() {
   if (wTleFlaga || !polaczony || cfg.demo || !strumienOd || ponowStrumien) return;
   let powod = null;
-  if (!klatkaJest) {
+  // kamera nie widzi naszego polaczenia (zerwala je) - takze przed pierwsza klatka, zeby nie czekac 20 s
+  niezajety = stan && stan.strumien_zajety === false ? niezajety + 1 : 0;
+  if (niezajety >= LIMIT_NIEZAJETY) powod = 'kamera zerwala polaczenie';
+  else if (!klatkaJest) {
     if (Date.now() - strumienOd > LIMIT_PIERWSZEJ_KLATKI) powod = 'brak pierwszej klatki';
-  } else if (stan) {
-    // kamera nie widzi naszego polaczenia albo licznik klatek stoi (firmware bez "klatki": tylko pierwszy warunek)
-    const stoi = stan.strumien_zajety === false || (typeof stan.klatki === 'number' && stan.klatki === ostKlatki);
-    zastoj = stoi ? zastoj + 1 : 0;
-    ostKlatki = typeof stan.klatki === 'number' ? stan.klatki : -1;
-    if (zastoj >= LIMIT_ZASTOJU) powod = 'obraz zamarzl';
+  } else if (stan && typeof stan.klatki === 'number') {
+    // licznik klatek stoi (firmware bez "klatki": tylko warunek niezajety)
+    if (stan.klatki !== ostKlatki) { ostKlatki = stan.klatki; klatkiOd = Date.now(); }
+    if (Date.now() - klatkiOd > LIMIT_ZASTOJU_MS) powod = 'obraz zamarzl';
   }
   if (powod) {
     console.log('strumien: ponawiam (' + powod + ')');
@@ -193,7 +197,7 @@ function startStrumienia() {
   const img = $('strumien');
   komunikat('Uruchamianie obrazu…');
   if (cfg.demo) { demoObraz(); return; }
-  strumienOd = Date.now(); klatkaJest = false; ostKlatki = -1; zastoj = 0;
+  strumienOd = Date.now(); klatkaJest = false; ostKlatki = -1; klatkiOd = Date.now(); niezajety = 0;
   img.onerror = null; img.onload = null;
   img.removeAttribute('src');            // bez tego naturalWidth moze zostac po starym obrazie
   // onload dla MJPEG nie jest pewny w kazdej wersji WebView - pierwsza klatka = naturalWidth > 0

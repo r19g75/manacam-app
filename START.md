@@ -47,6 +47,9 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
   (`klatki` z `/api/stan` stoją / kamera nie widzi strumienia przez 5 odczytów) → automatyczne ponowienie. Wcześniej po
   wyjęciu baterii aplikacja wisiała na „Uruchamianie obrazu…”. Strona z kamery (`zKamery`): adres = adres strony, bez
   przycisku aktualizacji. Sprawdzone w headless Chrome na stronie z kamery (firmware S1B).
+- 2026-10-13 (2): limity straży w CZASIE: pierwsza klatka 20 s, licznik klatek stoi 20 s, kamera nie widzi
+  połączenia 3 odczyty (też przed 1. klatką). Musi być > `LIMIT_KLATKI_MS` w firmware (15 s) — przy słabym łączu
+  klatka idzie kilka sekund; stare „5 odczytów” zrywałoby obraz.
 
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
