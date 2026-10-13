@@ -121,6 +121,7 @@ function ustawStan(j) {
 function odswiez() {
   const s = stan;
   pokazLacze(s);
+  pokazObserwacje(s);
   $('kropka').className = 'kropka' + (polaczony ? (s && s.kamera === false ? ' ostrz' : ' ok') : '');
   $('nazwa').textContent = (s && s.nazwa) || 'manaCam';
   const bat = $('bateria');
@@ -152,7 +153,9 @@ async function petlaStanu() {
   if (!wTleFlaga) {
     try {
       await api('/api/stan');
-      if (!polaczony) { polaczony = true; bledyZRzedu = 0; startStrumienia(); }
+      if (!polaczony) { polaczony = true; bledyZRzedu = 0; if ($('ekranGal').hidden) startStrumienia(); }
+      // kamera nie ma zegara: czas z telefonu (daty zdjec z obserwacji); stary program kamery nie ma czas_ok
+      if (stan && stan.czas_ok === false && !cfg.demo) api('/api/czas', { t: Math.floor(Date.now() / 1000) }).catch(() => {});
       bledyZRzedu = 0;
       strazStrumienia();
     } catch (e) {
@@ -184,6 +187,154 @@ function pokazLacze(s) {
   const f = s.strumien_zajety && fps !== null ? ` · ${fps.toFixed(fps < 10 ? 1 : 0)} kl/s` : '';
   $('laczeTxt').textContent = (db === null ? '– dBm' : `${db} dBm`) + f;
 }
+
+// ---------- obserwacja ----------
+// pasek widoczny tylko z programem kamery, ktory ma obserwacje (pole "obserwacja" w stanie)
+function pokazObserwacje(s) {
+  const jest = !!(s && typeof s.obserwacja === 'boolean') && !cfg.demo;
+  $('pasekObs').hidden = !jest;
+  if (!jest) return;
+  $('btnObs').classList.toggle('wl', s.obserwacja);
+  $('btnObs').disabled = !polaczony || (!s.karta && !s.obserwacja);
+  $('btnGaleria').disabled = !polaczony || !s.karta;
+  const i = $('obsInfo');
+  i.classList.toggle('ruch', !!(s.obserwacja && s.ruch));
+  i.textContent = !s.karta ? 'brak karty SD'
+    : s.karta_pelna ? 'karta pełna'
+    : s.obserwacja ? (s.ruch ? '● RUCH, zapis' : 'czuwa') + ` · zdarzenia ${s.zdarzenia}, zdjęcia ${s.zdjecia}`
+    : `wyłączona · zdjęcia ${s.zdjecia}`;
+}
+$('btnObs').addEventListener('click', () => {
+  const wl = !(stan && stan.obserwacja);
+  api('/api/obserwacja', { wl: wl ? 1 : 0 })
+    .then(() => toast(wl ? 'Obserwacja włączona (zostaje po wyłączeniu zasilania)' : 'Obserwacja wyłączona'))
+    .catch(pokazBlad);
+});
+$('ustCzulosc').addEventListener('input', e => { $('ustCzuloscTxt').textContent = e.target.value; });
+$('ustCzulosc').addEventListener('change', e => api('/api/obserwacja', { czulosc: +e.target.value }).then(() => toast('Zapisano czułość')).catch(pokazBlad));
+
+// ---------- galeria (zdjecia z karty kamery) ----------
+// Miniatury ladowane po jednej: serwer WWW kamery obsluguje 1 polaczenie naraz, rownolegle zadania przegladarki
+// (do 6) zapychaly kolejke polaczen (odrzucone = puste miniatury). Strumien zatrzymany na czas galerii - lacze jest wolne.
+const NA_STRONE = 24;
+let galFolder = null, galPliki = [], galPokazane = 0, galKolejka = [], galLaduje = false, galBiezace = null;
+const dataZdj = t => (t > 1600000000 ? new Date(t * 1000).toLocaleString('pl-PL') : 'bez daty (czas nieustawiony)');
+const urlZdj = (f, n) => adresUrl('/zdj', { f, n });
+
+async function apiLista(sciezka, params) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 20000);
+  try {
+    const r = await fetch(adresUrl(sciezka, params), { signal: ac.signal, cache: 'no-store' });
+    if (r.status === 404) throw new BladApi('Ta wersja programu kamery nie ma galerii, zaktualizuj kamerę', 404);
+    if (!r.ok) throw new BladApi(`Kamera zgłosiła błąd ${r.status}`, r.status);
+    return await r.json();
+  } catch (e) {
+    if (e instanceof BladApi) throw e;
+    throw new BladApi(e.name === 'AbortError' ? 'Kamera nie odpowiada' : 'Brak połączenia z kamerą', 0);
+  } finally { clearTimeout(t); }
+}
+
+function galLadujKolejne() {
+  if (galLaduje || !galKolejka.length || $('ekranGal').hidden) return;
+  const { img, url } = galKolejka.shift();
+  galLaduje = true;
+  const dalej = () => { galLaduje = false; galLadujKolejne(); };
+  img.onload = dalej;
+  img.onerror = () => { img.alt = '✕'; dalej(); };
+  img.src = url;
+}
+
+async function otworzGalerie() {
+  stopStrumienia();
+  $('ekranGal').hidden = false;
+  galFolder = null;
+  $('galTytul').textContent = 'Galeria';
+  $('galSiatka').innerHTML = ''; $('btnGalWiecej').hidden = true; $('galLista').innerHTML = '';
+  $('galInfo').textContent = 'Wczytywanie…';
+  try {
+    const j = await apiLista('/api/foldery');
+    const f = (j.foldery || []).sort().reverse();
+    $('galInfo').textContent = f.length ? 'Foldery: numer uruchomienia kamery - część (po 500 zdjęć). Najnowsze na górze.' : 'Brak zdjęć na karcie.';
+    f.forEach(n => {
+      const b = document.createElement('button');
+      b.textContent = `Uruchomienie ${parseInt(n, 10)}, część ${parseInt(n.split('-')[1], 10)}`;
+      b.onclick = () => otworzFolder(n);
+      $('galLista').appendChild(b);
+    });
+  } catch (e) { $('galInfo').textContent = e.message; }
+}
+
+async function otworzFolder(n) {
+  galFolder = n; galKolejka = []; galPokazane = 0;
+  $('galLista').innerHTML = ''; $('galSiatka').innerHTML = '';
+  $('galTytul').textContent = `Uruchomienie ${parseInt(n, 10)}`;
+  $('galInfo').textContent = 'Wczytywanie listy…';
+  try {
+    const j = await apiLista('/api/zdjecia', { f: n });
+    galPliki = (j.zdjecia || []).sort((a, b) => (a[0] < b[0] ? 1 : -1));     // najnowsze (najwyzszy numer) pierwsze
+    $('galInfo').textContent = `${galPliki.length} zdjęć`;
+    pokazWiecej();
+  } catch (e) { $('galInfo').textContent = e.message; }
+}
+
+function pokazWiecej() {
+  galPliki.slice(galPokazane, galPokazane + NA_STRONE).forEach(([n, , t]) => {
+    const fig = document.createElement('figure');
+    const img = document.createElement('img');
+    const cap = document.createElement('figcaption');
+    cap.textContent = t > 1600000000 ? new Date(t * 1000).toLocaleTimeString('pl-PL') : n.replace('.jpg', '');
+    fig.append(img, cap);
+    fig.onclick = () => pokazZdjecie(n, t);
+    $('galSiatka').appendChild(fig);
+    galKolejka.push({ img, url: urlZdj(galFolder, n) });
+  });
+  galPokazane = Math.min(galPokazane + NA_STRONE, galPliki.length);
+  $('btnGalWiecej').hidden = galPokazane >= galPliki.length;
+  galLadujKolejne();
+}
+
+function pokazZdjecie(n, t) {
+  galBiezace = n;
+  $('galDuze').src = urlZdj(galFolder, n);
+  $('galOpis').textContent = `${n} · ${dataZdj(t)}`;
+  $('galPodglad').hidden = false;
+}
+
+async function zapiszZGalerii() {
+  try {
+    const r = await fetch(urlZdj(galFolder, galBiezace));
+    if (!r.ok) throw new BladApi(`Kamera zgłosiła błąd ${r.status}`, r.status);
+    const blob = await r.blob();
+    if (natywne) {
+      const b64 = await new Promise((ok, zle) => {
+        const fr = new FileReader();
+        fr.onload = () => ok(String(fr.result).split(',')[1]);
+        fr.onerror = () => zle(new BladApi('Nie udało się odczytać zdjęcia', -1));
+        fr.readAsDataURL(blob);
+      });
+      const wynik = natywne.zapiszZdjecie(b64);
+      if (wynik.startsWith('BLAD')) toast(wynik, true); else toast(`Zapisano w Galerii: ${wynik}`);
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `manaCam_${galFolder}_${galBiezace}`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+  } catch (e) { pokazBlad(e); }
+}
+
+function galWstecz() {
+  if (!$('galPodglad').hidden) { $('galPodglad').hidden = true; $('galDuze').removeAttribute('src'); return; }
+  if (galFolder) { galKolejka = []; otworzGalerie(); return; }
+  galKolejka = [];
+  $('ekranGal').hidden = true; $('galSiatka').innerHTML = '';
+  if (polaczony) startStrumienia();
+}
+$('btnGaleria').addEventListener('click', otworzGalerie);
+$('btnGalWstecz').addEventListener('click', galWstecz);
+$('btnGalWiecej').addEventListener('click', pokazWiecej);
+$('btnGalZamknij').addEventListener('click', galWstecz);
+$('btnGalZapisz').addEventListener('click', zapiszZGalerii);
 
 // ---------- strumien ----------
 let ponowStrumien = null, czekajKlatke = null;
@@ -220,7 +371,7 @@ function strazStrumienia() {
 function startStrumienia() {
   clearTimeout(ponowStrumien); ponowStrumien = null;
   clearInterval(czekajKlatke);
-  if (wTleFlaga || !polaczony) return;
+  if (wTleFlaga || !polaczony || !$('ekranGal').hidden) return;   // galeria: lacze dla zdjec z karty
   const img = $('strumien');
   komunikat('Uruchamianie obrazu…');
   if (cfg.demo) { demoObraz(); return; }
@@ -403,6 +554,7 @@ function otworzUstawienia() {
     $('ustJakosc').value = stan.jakosc || 12;
     $('ustObrot').checked = stan.obrot === 180;
     $('ustLustro').checked = !!stan.lustro;
+    if (typeof stan.czulosc === 'number') { $('ustCzulosc').value = stan.czulosc; $('ustCzuloscTxt').textContent = stan.czulosc; }
   }
   $('ustKamera').textContent = stan
     ? `${stan.nazwa}, program ${stan.wersja} (API ${stan.api})\nczas pracy ${Math.floor(stan.czas / 3600)} h ${Math.floor(stan.czas / 60) % 60} min, ostatni restart: ${stan.restart}` +
@@ -415,7 +567,11 @@ function otworzUstawienia() {
   $('ekranUst').hidden = false;
 }
 function zamknijUstawienia() { $('ekranUst').hidden = true; }
-window.wstecz = () => { if (!$('ekranUst').hidden) { zamknijUstawienia(); return true; } return false; };
+window.wstecz = () => {
+  if (!$('ekranUst').hidden) { zamknijUstawienia(); return true; }
+  if (!$('ekranGal').hidden) { galWstecz(); return true; }
+  return false;
+};
 
 $('btnUst').addEventListener('click', otworzUstawienia);
 $('btnZamknij').addEventListener('click', zamknijUstawienia);

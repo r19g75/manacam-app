@@ -73,6 +73,23 @@ main { display: flex; flex-direction: column; height: calc(100% - 60px); }
 .ustawienia .glowny { margin-top: 24px; background: var(--aktywny); color: #111; }
 .info { color: var(--slaby); font-size: 14px; white-space: pre-line; }
 
+.obsInfo { flex: 1; min-width: 0; color: var(--slaby); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obsInfo.ruch { color: var(--blad); font-weight: 600; }
+#btnObs.wl { background: var(--blad); color: #fff; }
+
+.galNaglowek { display: flex; align-items: center; gap: 8px; }
+.galNaglowek h2 { margin: 4px 0; }
+.galLista button { display: block; width: 100%; margin: 6px 0; text-align: left; }
+.galSiatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; margin-top: 8px; }
+.galSiatka figure { margin: 0; position: relative; aspect-ratio: 4 / 3; background: var(--panel); border-radius: 6px; overflow: hidden; }
+.galSiatka img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.galSiatka figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 4px; font-size: 11px;
+  background: rgba(0,0,0,.55); color: #fff; font-variant-numeric: tabular-nums; }
+.galPodglad { position: fixed; inset: 0; background: #000; z-index: 6; display: flex; flex-direction: column; padding: 8px; gap: 8px; }
+.galPodglad[hidden] { display: none; }
+.galPodglad img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+.galPrzyciski { display: flex; gap: 8px; } .galPrzyciski button { flex: 1; }
+
 .toast { position: fixed; left: 16px; right: 16px; bottom: 20px; padding: 12px 14px; border-radius: 10px;
   background: #33475c; box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 10; }
 .toast.blad { background: var(--blad); }

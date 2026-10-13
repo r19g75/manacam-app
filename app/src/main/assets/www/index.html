@@ -28,6 +28,11 @@
     <input id="ledSuwak" type="range" min="0" max="255" step="5" value="0" aria-label="Jasność leda">
     <button id="btnFoto">Zdjęcie</button>
   </div>
+  <div id="pasekObs" class="pasek" hidden>
+    <button id="btnObs" class="przelacznik">Obserwacja</button>
+    <span id="obsInfo" class="obsInfo"></span>
+    <button id="btnGaleria">Galeria</button>
+  </div>
 
   <div class="sterowanie">
     <div class="krzyz">
@@ -79,6 +84,12 @@
   <label class="wiersz"><input id="ustLustro" type="checkbox"> Odbicie lustrzane</label>
   <button id="btnZapiszObraz">Zastosuj</button>
 
+  <h3>Obserwacja (zdjęcia po wykryciu ruchu)</h3>
+  <label>Czułość: <span id="ustCzuloscTxt">50</span>
+    <input id="ustCzulosc" type="range" min="1" max="100" step="1" value="50"></label>
+  <div class="info">Większa czułość = mniejszy ruch wywołuje zdjęcia (ale też liście, cienie). Seria zdjęć co 1 s,
+najwyżej 60 s na jedno zdarzenie; zapis wraca po ustaniu ruchu.</div>
+
   <h3>Kamera</h3>
   <div id="ustKamera" class="info">–</div>
 
@@ -89,6 +100,25 @@
   <label class="wiersz"><input id="ustDemo" type="checkbox"> Tryb demo (bez kamery)</label>
 
   <button id="btnZamknij" class="glowny">Gotowe</button>
+</section>
+
+<section id="ekranGal" class="ustawienia galeria" hidden>
+  <div class="galNaglowek">
+    <button id="btnGalWstecz" class="ikona" aria-label="Wstecz">&#8592;</button>
+    <h2 id="galTytul">Galeria</h2>
+  </div>
+  <div id="galInfo" class="info"></div>
+  <div id="galLista" class="galLista"></div>
+  <div id="galSiatka" class="galSiatka"></div>
+  <button id="btnGalWiecej" hidden>Więcej</button>
+  <div id="galPodglad" class="galPodglad" hidden>
+    <img id="galDuze" alt="">
+    <div id="galOpis" class="info"></div>
+    <div class="galPrzyciski">
+      <button id="btnGalZapisz">Zapisz w telefonie</button>
+      <button id="btnGalZamknij">Zamknij</button>
+    </div>
+  </div>
 </section>
 
 <div id="toast" class="toast" hidden></div>
