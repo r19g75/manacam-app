@@ -157,6 +157,7 @@ async function petlaStanu() {
       // kamera nie ma zegara: czas z telefonu (daty zdjec z obserwacji); stary program kamery nie ma czas_ok
       if (stan && stan.czas_ok === false && !cfg.demo) api('/api/czas', { t: Math.floor(Date.now() / 1000) }).catch(() => {});
       bledyZRzedu = 0;
+      powitajObserwacje(stan);
       strazStrumienia();
     } catch (e) {
       if (e.kod === 401 || e.kod === 404) {
@@ -194,6 +195,8 @@ function pokazObserwacje(s) {
   const jest = !!(s && typeof s.obserwacja === 'boolean') && !cfg.demo;
   $('pasekObs').hidden = !jest;
   if (!jest) return;
+  // stan wprost na przycisku: sam kolor byl mylony (czerwony "WL" brany za wylaczony -> klik wylaczal)
+  $('btnObs').textContent = s.obserwacja ? 'Obserwacja WŁ' : 'Obserwacja WYŁ';
   $('btnObs').classList.toggle('wl', s.obserwacja);
   $('btnObs').disabled = !polaczony || (!s.karta && !s.obserwacja);
   $('btnGaleria').disabled = !polaczony || !s.karta;
@@ -204,12 +207,28 @@ function pokazObserwacje(s) {
     : s.obserwacja ? (s.ruch ? '● RUCH, zapis' : 'czuwa') + ` · zdarzenia ${s.zdarzenia}, zdjęcia ${s.zdjecia}`
     : `wyłączona · zdjęcia ${s.zdjecia}`;
 }
-$('btnObs').addEventListener('click', () => {
-  const wl = !(stan && stan.obserwacja);
-  api('/api/obserwacja', { wl: wl ? 1 : 0 })
-    .then(() => toast(wl ? 'Obserwacja włączona (do wyłączenia albo do odłączenia zasilania)' : 'Obserwacja wyłączona'))
-    .catch(pokazBlad);
+// Decyzja ze swiezego stanu kamery (po powrocie z tla stan bywa stary), wylaczenie tylko po potwierdzeniu.
+$('btnObs').addEventListener('click', async () => {
+  try {
+    const s = await api('/api/stan');
+    const wl = !s.obserwacja;
+    if (!wl && !await potwierdz(`Obserwacja jest WŁĄCZONA (zdarzenia ${s.zdarzenia}, zdjęcia ${s.zdjecia}).
+
+` +
+                                'Wyłączyć? Kamera przestanie zapisywać zdjęcia.')) return;
+    const j = await api('/api/obserwacja', { wl: wl ? 1 : 0 });
+    if (j.obserwacja !== wl) throw new BladApi('Kamera nie zmieniła stanu obserwacji', -1);
+    toast(wl ? 'Obserwacja WŁĄCZONA w kamerze. Działa też po zamknięciu aplikacji, do wyłączenia albo odłączenia zasilania.'
+             : 'Obserwacja wyłączona');
+  } catch (e) { pokazBlad(e); }
 });
+// po otwarciu aplikacji / powrocie z tla: wyraznie powiedz, ze kamera czuwa (zeby nie "wlaczac" jej klikiem)
+let obsPowitanie = true;
+function powitajObserwacje(s) {
+  if (!obsPowitanie || !s || cfg.demo) return;
+  obsPowitanie = false;
+  if (s.obserwacja) toast(`Obserwacja działa w kamerze · zdarzenia ${s.zdarzenia}, zdjęcia ${s.zdjecia}`);
+}
 $('ustCzulosc').addEventListener('input', e => { $('ustCzuloscTxt').textContent = e.target.value; });
 $('ustCzulosc').addEventListener('change', e => api('/api/obserwacja', { czulosc: +e.target.value }).then(() => toast('Zapisano czułość')).catch(pokazBlad));
 
@@ -411,6 +430,7 @@ function komunikat(tekst) {
 // wywolywane z MainActivity (onPause/onResume) i przy zmianie widocznosci karty
 window.wTle = tl => {
   wTleFlaga = tl;
+  if (!tl) obsPowitanie = true;
   if (tl) stopStrumienia(); else if (polaczony) startStrumienia();
 };
 document.addEventListener('visibilitychange', () => window.wTle(document.hidden));
@@ -654,6 +674,17 @@ function toast(tekst, blad) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, blad ? 5000 : 2500);
 }
 function pokazBlad(e) { toast(e && e.message ? e.message : String(e), true); }
+
+// wlasne okno Tak/Nie (interfejs nie uzywa confirm()); Promise<boolean>
+function potwierdz(tekst) {
+  return new Promise(ok => {
+    $('dialogTxt').textContent = tekst;
+    $('dialog').hidden = false;
+    const koniec = w => { $('dialog').hidden = true; $('dialogTak').onclick = $('dialogNie').onclick = null; ok(w); };
+    $('dialogTak').onclick = () => koniec(true);
+    $('dialogNie').onclick = () => koniec(false);
+  });
+}
 
 // ---------- tryb demo (test interfejsu bez kamery) ----------
 const demo = { api: API_WERSJA, wersja: 'DEMO', nazwa: 'manaCam-DEMO', czas: 0, restart: 'demo', bateria_v: 18.4, bateria_pct: 62,

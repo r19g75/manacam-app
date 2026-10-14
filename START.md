@@ -51,6 +51,13 @@ Firmware kamery: `C:\Users\Robert\Projekty_Claude\manaCam_firmware` (jego `START
   połączenia 3 odczyty (też przed 1. klatką). Musi być > `LIMIT_KLATKI_MS` w firmware (15 s) — przy słabym łączu
   klatka idzie kilka sekund; stare „5 odczytów” zrywałoby obraz.
 
+- 2026-10-14: przycisk obserwacji. Zdarzenie 13.10 ~17:24: user włączył obserwację, zamknął aplikację, otworzył ją z daleka
+  i obserwacja się wyłączyła (dziennik kamery: komenda wl=0). Wyłączyć może tylko przycisk-przełącznik, a jedyną różnicą
+  był kolor (czerwony = WŁ). Poprawka: napis „Obserwacja WŁ/WYŁ”, decyzja ze świeżego `/api/stan` (nie ze starego stanu
+  po powrocie z tła), wyłączenie tylko po potwierdzeniu w oknie Tak/Nie (`potwierdz`), sprawdzenie odpowiedzi kamery,
+  komunikat „Obserwacja działa w kamerze” po połączeniu i po powrocie z tła. Test headless Chrome na atrapie API
+  (6 kroków, „Nie” nic nie wysyła). Kopia w `manaCam_firmware/web/`; strona z kamery zmieni się po wgraniu firmware.
+
 ## Pułapki (sprawdzone / przewidziane)
 1. **Android kieruje ruch na dane komórkowe**, gdy Wi-Fi nie ma internetu (sieć kamery): `MainActivity.przypnijDoWifi()`
    wiąże proces z Wi-Fi (`bindProcessToNetwork`). Przy Wi-Fi z internetem nic to nie zmienia.
