@@ -1,7 +1,7 @@
 # manaCam — aplikacja Android (podgląd + sterowanie głowicą kamery manaTools 05)
 
 **Czytaj najpierw.** Ten plik = stan, decyzje, pułapki. Kontrakt z kamerą: `API.md`.
-Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware` (jego `START.md`, `NOTATKI.md`, `PLAN_SOFT.md`).
+Firmware kamery: `C:\Users\Robert\Projekty_Claude\manaCam_firmware` (jego `START.md`, `NOTATKI.md`, `PLAN_SOFT.md`).
 
 ## Decyzje (2026-10-12, user)
 - **APK z GitHuba** (nie PWA): PWA z GitHub Pages działa po HTTPS i nie może rozmawiać z `http://192.168.4.1`
@@ -22,7 +22,7 @@ Firmware kamery: `C:\Users\Robert\Documents\PlatformIO\Projects\manaCam_firmware
 - `podpis-sha256.txt`: odcisk certyfikatu podpisu; workflow odrzuca APK z innym podpisem.
 
 ## Klucz podpisu — KRYTYCZNE
-- Plik `manacam.p12` (PKCS12, alias `manacam`) + `haslo.txt` w `C:\Users\Robert\Documents\PRojekty\manaCam_app_KLUCZ\`
+- Plik `manacam.p12` (PKCS12, alias `manacam`) + `haslo.txt` w `C:\Users\Robert\Projekty_Claude\manaCam_app_KLUCZ\`
   (POZA repo). Ten sam klucz jest w sekretach repo: `MANACAM_KEYSTORE_B64` (base64 pliku), `MANACAM_KEYSTORE_PASS`.
 - **Zgubienie klucza = aktualizacje nie zainstalują się na starej wersji** (trzeba odinstalować, tracąc ustawienia).
   Zrób kopię katalogu `manaCam_app_KLUCZ` (pendrive/sejf), NIE do repo.
