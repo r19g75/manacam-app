@@ -86,3 +86,7 @@ Firmware kamery: `C:\Users\Robert\Projekty_Claude\manaCam_firmware` (jego `START
 - 2026-10-16: user (Huawei Mate 20X): w pionie obraz mały (ramka 3:4 ograniczona do 58vh → ~216×288 przy 360 px szerokości).
   Dodany pełny ekran: przycisk ⛶ w rogu obrazu (✕ / wstecz Androida zamyka), nagłówek i sterowanie schowane, dotknięcie dalej celuje.
   Test headless 360×748 (demo): obraz 360×480. Galeria: usuwanie folderu / całej karty (v1.0.11, user potwierdził).
+- 2026-10-16 (2): user: na Huawei i na najnowszym Samsungu obraz „malutki, ginie”. Zmiany: ramka bez `aspect-ratio` (stary WebView go nie zna
+  → ramka kurczyła się do obrazu), wysokość w vw (75vw / pion 133vw, maks 48vh); `inset` → top/right/bottom/left.
+  Pełny ekran (⛶, zapamiętany w cfg.pelny): obraz na cały ekran, krzyż (lewy dół) i 1×/Led/Zdjęcie (prawy dół) półprzezroczyste na obrazie,
+  wskaźnik łącza na górze. Headless 360×748 / 384×800 / poziomo 748×360 OK. Na prawdziwym telefonie do potwierdzenia.

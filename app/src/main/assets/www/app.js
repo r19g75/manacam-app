@@ -21,7 +21,7 @@ const cfg = (() => {
            ledOst: c.ledOst || 128, aktSprawdzono: c.aktSprawdzono || 0,
            // obrot widoku w aplikacji (stopnie zgodnie z zegarem). Kamera lezy w obudowie bokiem, obraz z sensora
            // jest obrocony o 90 w prawo -> domyslnie 270 (90 w lewo). Sensor sam umie tylko 180 (Ustawienia > obraz).
-           widok: [0, 90, 180, 270].includes(c.widok) ? c.widok : 270 };
+           widok: [0, 90, 180, 270].includes(c.widok) ? c.widok : 270, pelny: !!c.pelny };
 })();
 if (zKamery) cfg.adres = location.hostname;
 if (new URLSearchParams(location.search).has('demo')) cfg.demo = true;   // test w przegladarce: index.html?demo
@@ -624,12 +624,14 @@ function otworzUstawienia() {
 }
 function zamknijUstawienia() { $('ekranUst').hidden = true; }
 function pelnyEkran(wl) {
+  cfg.pelny = wl; zapiszCfg();
   document.body.classList.toggle('pelny', wl);
   $('btnPelny').innerHTML = wl ? '&#x2715;' : '&#x26F6;';
   $('btnPelny').setAttribute('aria-label', wl ? 'Zamknij pełny ekran' : 'Pełny ekran');
   ulozObraz();
 }
 $('btnPelny').addEventListener('click', e => { e.stopPropagation(); pelnyEkran(!document.body.classList.contains('pelny')); });
+if (cfg.pelny) pelnyEkran(true);                                 // zapamietany wybor
 window.wstecz = () => {
   if (document.body.classList.contains('pelny')) { pelnyEkran(false); return true; }
   if (!$('ekranUst').hidden) { zamknijUstawienia(); return true; }
