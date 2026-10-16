@@ -270,11 +270,15 @@ async function otworzGalerie() {
   galFolder = null;
   $('galTytul').textContent = 'Galeria';
   $('galSiatka').innerHTML = ''; $('btnGalWiecej').hidden = true; $('galLista').innerHTML = '';
+  $('btnGalUsun').hidden = true;
   $('galInfo').textContent = 'Wczytywanie…';
   try {
     const j = await apiLista('/api/foldery');
     const f = (j.foldery || []).sort().reverse();
-    $('galInfo').textContent = f.length ? 'Foldery: numer uruchomienia kamery - część (po 500 zdjęć). Najnowsze na górze.' : 'Brak zdjęć na karcie.';
+    const miejsce = j.wolne_mb != null ? ` Wolne ${(j.wolne_mb / 1024).toFixed(1)} z ${(j.razem_mb / 1024).toFixed(1)} GB.` : '';
+    $('galInfo').textContent = (f.length ? 'Foldery: numer uruchomienia kamery - część (po 500 zdjęć). Najnowsze na górze.' : 'Brak zdjęć na karcie.') + miejsce;
+    $('btnGalUsun').textContent = 'Usuń wszystkie zdjęcia z karty';
+    $('btnGalUsun').hidden = !f.length;
     f.forEach(n => {
       const b = document.createElement('button');
       b.textContent = `Uruchomienie ${parseInt(n, 10)}, część ${parseInt(n.split('-')[1], 10)}`;
@@ -288,11 +292,14 @@ async function otworzFolder(n) {
   galFolder = n; galKolejka = []; galPokazane = 0;
   $('galLista').innerHTML = ''; $('galSiatka').innerHTML = '';
   $('galTytul').textContent = `Uruchomienie ${parseInt(n, 10)}`;
+  $('btnGalUsun').hidden = true;
   $('galInfo').textContent = 'Wczytywanie listy…';
   try {
     const j = await apiLista('/api/zdjecia', { f: n });
     galPliki = (j.zdjecia || []).sort((a, b) => (a[0] < b[0] ? 1 : -1));     // najnowsze (najwyzszy numer) pierwsze
     $('galInfo').textContent = `${galPliki.length} zdjęć`;
+    $('btnGalUsun').textContent = 'Usuń ten folder';
+    $('btnGalUsun').hidden = false;
     pokazWiecej();
   } catch (e) { $('galInfo').textContent = e.message; }
 }
@@ -342,6 +349,34 @@ async function zapiszZGalerii() {
   } catch (e) { pokazBlad(e); }
 }
 
+// Usuwanie na karcie: folder albo wszystko (kamera odmawia przy wlaczonej obserwacji - 423).
+// Kilkaset plikow to kilkadziesiat sekund, stad dlugi limit.
+async function usunZGalerii() {
+  const folder = galFolder;
+  const tekst = folder
+    ? `Usunąć z karty folder „Uruchomienie ${parseInt(folder, 10)}, część ${parseInt(folder.split('-')[1], 10)}” (${galPliki.length} zdjęć)? Tego nie da się cofnąć.`
+    : 'Usunąć WSZYSTKIE zdjęcia z karty kamery? Tego nie da się cofnąć.';
+  if (!await potwierdz(tekst)) return;
+  galKolejka = [];
+  $('btnGalUsun').disabled = true;
+  $('galInfo').textContent = 'Usuwanie… (przy wielu zdjęciach do kilku minut, nie wyłączaj kamery)';
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 600000);
+  try {
+    const r = await fetch(adresUrl('/api/usun', folder ? { f: folder } : { wszystko: 1 }), { signal: ac.signal, cache: 'no-store' });
+    if (r.status === 423) throw new BladApi('Najpierw wyłącz obserwację (kamera zapisuje zdjęcia)', 423);
+    if (r.status === 404) throw new BladApi('Ta wersja programu kamery nie umie usuwać, zaktualizuj kamerę', 404);
+    if (r.status === 401) throw new BladApi('Złe hasło administratora (Ustawienia)', 401);
+    if (!r.ok) throw new BladApi(`Kamera zgłosiła błąd ${r.status}`, r.status);
+    const j = await r.json();
+    toast(`Usunięto ${j.usuniete} zdjęć · wolne ${(j.wolne_mb / 1024).toFixed(1)} GB`);
+    otworzGalerie();
+  } catch (e) {
+    pokazBlad(e instanceof BladApi ? e : new BladApi(e.name === 'AbortError' ? 'Kamera nie odpowiada' : 'Brak połączenia z kamerą', 0));
+    $('galInfo').textContent = '';
+  } finally { clearTimeout(t); $('btnGalUsun').disabled = false; }
+}
+
 function galWstecz() {
   if (!$('galPodglad').hidden) { $('galPodglad').hidden = true; $('galDuze').removeAttribute('src'); return; }
   if (galFolder) { galKolejka = []; otworzGalerie(); return; }
@@ -354,6 +389,7 @@ $('btnGalWstecz').addEventListener('click', galWstecz);
 $('btnGalWiecej').addEventListener('click', pokazWiecej);
 $('btnGalZamknij').addEventListener('click', galWstecz);
 $('btnGalZapisz').addEventListener('click', zapiszZGalerii);
+$('btnGalUsun').addEventListener('click', usunZGalerii);
 
 // ---------- strumien ----------
 let ponowStrumien = null, czekajKlatke = null;

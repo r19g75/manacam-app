@@ -67,3 +67,11 @@ Jeden oglądający naraz. Inne urządzenie dostaje `503` i tekst `kamera zajeta`
 ```
 Pole sprzętu, którego nie ma (np. brak ADS1115 przed S2), ma wartość `null` (`bateria_v`, `bateria_pct`).
 `glowica`/`kamera` = `false`, gdy nie wykryto PCA9685 albo kamera się nie zainicjowała. Wywołania ruchu zwracają wtedy `409`.
+
+## Galeria (karta SD)
+- `GET /api/foldery` → `{"foldery":["0012-01",...],"wolne_mb":7550,"razem_mb":7602}` (`wolne_mb`/`razem_mb` tylko z kartą).
+- `GET /api/zdjecia?f=<folder>` → `{"folder":"...","zdjecia":[["000001.jpg",rozmiar,czas_unix],...]}`.
+- `GET /zdj?f=<folder>&n=<plik>` → JPEG.
+- `GET /api/usun?f=<folder>` albo `?wszystko=1` → `{"usuniete":N,"foldery":M,"wolne_mb":X}`. Blokuje kamerę na czas
+  usuwania (kilkaset plików = kilkadziesiąt s). `423` = obserwacja włączona (najpierw wyłączyć), `503` = brak karty,
+  `400` = zła nazwa. Nieistniejący folder → `usuniete: 0`. Zdjęcia zapisane w telefonie („Zapisz w telefonie”) zostają.
