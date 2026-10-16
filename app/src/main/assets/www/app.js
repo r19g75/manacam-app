@@ -623,7 +623,15 @@ function otworzUstawienia() {
   $('ekranUst').hidden = false;
 }
 function zamknijUstawienia() { $('ekranUst').hidden = true; }
+function pelnyEkran(wl) {
+  document.body.classList.toggle('pelny', wl);
+  $('btnPelny').innerHTML = wl ? '&#x2715;' : '&#x26F6;';
+  $('btnPelny').setAttribute('aria-label', wl ? 'Zamknij pełny ekran' : 'Pełny ekran');
+  ulozObraz();
+}
+$('btnPelny').addEventListener('click', e => { e.stopPropagation(); pelnyEkran(!document.body.classList.contains('pelny')); });
 window.wstecz = () => {
+  if (document.body.classList.contains('pelny')) { pelnyEkran(false); return true; }
   if (!$('ekranUst').hidden) { zamknijUstawienia(); return true; }
   if (!$('ekranGal').hidden) { galWstecz(); return true; }
   return false;

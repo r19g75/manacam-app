@@ -111,3 +111,9 @@ main { display: flex; flex-direction: column; height: calc(100% - 60px); }
   .pasek .przelacznik { min-width: 44px; }
 }
 .galeria .usun { display: block; width: 100%; margin: 18px 0 6px; color: #fff; background: #b3261e; border-color: #b3261e; }
+/* pelny ekran obrazu (przycisk w rogu): naglowek i sterowanie schowane, dotkniecie dalej celuje */
+.pelnyBtn { position: absolute; right: 6px; top: 6px; z-index: 2; min-width: 44px; min-height: 44px; padding: 0;
+  font-size: 22px; line-height: 1; background: rgba(0,0,0,.45); color: #fff; border: 0; border-radius: 8px; }
+body.pelny header, body.pelny .pasek, body.pelny .sterowanie { display: none !important; }
+body.pelny main { height: 100%; display: block; }
+body.pelny .obraz, body.pelny .obraz.pion { height: 100vh; max-height: none; aspect-ratio: auto; }

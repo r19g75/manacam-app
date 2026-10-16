@@ -82,3 +82,7 @@ Firmware kamery: `C:\Users\Robert\Projekty_Claude\manaCam_firmware` (jego `START
 1. Zainstalować APK na telefonie (link wyżej).
 2. Test na telefonie w sieci kamery (pułapka 1!), zdjęcie do Galerii, powrót z tła.
 3. Firmware S2 (bateria) / S3 (kalibracja serw, kierunki zgodne z `API.md`) / S4 (≥10 kl./s; teraz ~8,8 przy SVGA).
+
+- 2026-10-16: user (Huawei Mate 20X): w pionie obraz mały (ramka 3:4 ograniczona do 58vh → ~216×288 przy 360 px szerokości).
+  Dodany pełny ekran: przycisk ⛶ w rogu obrazu (✕ / wstecz Androida zamyka), nagłówek i sterowanie schowane, dotknięcie dalej celuje.
+  Test headless 360×748 (demo): obraz 360×480. Galeria: usuwanie folderu / całej karty (v1.0.11, user potwierdził).
